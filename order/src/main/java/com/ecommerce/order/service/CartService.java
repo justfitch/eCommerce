@@ -7,6 +7,7 @@ import com.ecommerce.order.dto.ProductResponse;
 import com.ecommerce.order.dto.UserResponse;
 import com.ecommerce.order.model.CartItem;
 import com.ecommerce.order.repository.CartItemRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class CartService {
     private final ProductServiceClient productServiceClient;
     private final UserServiceClient userServiceClient;
 
+    @CircuitBreaker(name = "product-service")
     public boolean addToCart(String userId, CartItemRequest request) {
       try {
         ProductResponse productResponse = productServiceClient.getProductById(request.getProductId());
@@ -39,22 +41,22 @@ public class CartService {
         return false;
       }
 
-        CartItem existingCartItem = cartItemRepository.findByUserIdAndProductId(userId, request.getProductId());
-        if (existingCartItem != null) {
-            // Update the quantity
-            existingCartItem.setQuantity(existingCartItem.getQuantity() + request.getQuantity());
-            existingCartItem.setPrice(BigDecimal.valueOf(1000));
-            cartItemRepository.save(existingCartItem);
-        } else {
-            // Create new cart item
-           CartItem cartItem = new CartItem();
-           cartItem.setUserId(userId);
-           cartItem.setProductId(Long.valueOf(request.getProductId()));
-           cartItem.setQuantity(request.getQuantity());
-           cartItem.setPrice(BigDecimal.valueOf(1000));
-           cartItemRepository.save(cartItem);
-        }
-        return true;
+      CartItem existingCartItem = cartItemRepository.findByUserIdAndProductId(userId, request.getProductId());
+      if (existingCartItem != null) {
+          // Update the quantity
+          existingCartItem.setQuantity(existingCartItem.getQuantity() + request.getQuantity());
+          existingCartItem.setPrice(BigDecimal.valueOf(1000));
+          cartItemRepository.save(existingCartItem);
+      } else {
+          // Create new cart item
+         CartItem cartItem = new CartItem();
+         cartItem.setUserId(userId);
+         cartItem.setProductId(Long.valueOf(request.getProductId()));
+         cartItem.setQuantity(request.getQuantity());
+         cartItem.setPrice(BigDecimal.valueOf(1000));
+         cartItemRepository.save(cartItem);
+      }
+      return true;
     }
 
     public boolean deleteItemFromCart(String userId, String productId) {
